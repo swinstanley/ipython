@@ -5,6 +5,7 @@ import time
 import requests
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
+from unicodedata import normalize
 from unittest import TestCase
 
 from IPython.utils.tempdir import TemporaryDirectory
@@ -17,6 +18,14 @@ class NotebookTestBase(TestCase):
     """
 
     port = 12341
+    
+    def assertEqual(self, left, right, *args, **kwargs):
+        """override assertEqual to normalize unicode"""
+        if isinstance(left, unicode):
+            left = normalize('NFC', left)
+        if isinstance(right, unicode):
+            right = normalize('NFC', right)
+        return super(NotebookTestBase, self).assertEqual(left, right, *args, **kwargs)
 
     @classmethod
     def wait_until_alive(cls):
@@ -52,9 +61,12 @@ class NotebookTestBase(TestCase):
             '--port=%d' % cls.port,
             '--no-browser',
             '--ipython-dir=%s' % cls.ipython_dir.name,
-            '--notebook-dir=%s' % cls.notebook_dir.name
+            '--notebook-dir=%s' % cls.notebook_dir.name,
+            '--log-level=WARN',
         ]        
-        cls.notebook = Popen(notebook_args, stdout=PIPE, stderr=PIPE)
+        cls.notebook = Popen(notebook_args,
+            stdout=PIPE, stderr=PIPE,
+        )
         cls.wait_until_alive()
 
     @classmethod
